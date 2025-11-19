@@ -228,8 +228,13 @@ async def list_models():
 
 
 # Helper to convert between Gemini and OpenAI model names
-def map_model_name(openai_model_name: str) -> Model:
+def map_model_name(openai_model_name: str):
 	"""根据模型名称字符串查找匹配的 Model 枚举值"""
+	# 检查是否是 gemini-3-pro，如果是则返回字符串让 GeminiClient 调用 Model.from_name()
+	if "3-pro" in openai_model_name.lower() or openai_model_name.lower() == "gemini-3-pro":
+		logger.info("Detected gemini-3-pro request, will use patched Model.from_name()")
+		return "gemini-3-pro"
+
 	# 打印所有可用模型以便调试
 	all_models = [m.model_name if hasattr(m, "model_name") else str(m) for m in Model]
 	logger.info(f"Available models: {all_models}")
