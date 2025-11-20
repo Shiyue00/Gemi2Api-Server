@@ -361,8 +361,10 @@ async def get_gemini_client():
 	global gemini_client
 	if gemini_client is None:
 		try:
-			gemini_client = GeminiClient(SECURE_1PSID, SECURE_1PSIDTS)
-			await gemini_client.init(timeout=300)
+			# gemini_client = GeminiClient(SECURE_1PSID, SECURE_1PSIDTS)
+			# await gemini_client.init(timeout=300)
+			gemini_client = GeminiClient(SECURE_1PSID, SECURE_1PSIDTS, proxy=None)
+			await gemini_client.init(timeout=30, auto_close=False, close_delay=300, auto_refresh=True)
 		except Exception as e:
 			logger.error(f"Failed to initialize Gemini client: {str(e)}")
 			raise HTTPException(status_code=500, detail=f"Failed to initialize Gemini client: {str(e)}")
@@ -377,8 +379,10 @@ async def create_chat_completion(request: ChatCompletionRequest, api_key: str = 
 		# 确保客户端已初始化
 		global gemini_client, SECURE_1PSID, SECURE_1PSIDTS
 		if gemini_client is None:
-			gemini_client = GeminiClient(SECURE_1PSID, SECURE_1PSIDTS)
-			await gemini_client.init(timeout=300)
+			# gemini_client = GeminiClient(SECURE_1PSID, SECURE_1PSIDTS)
+			# await gemini_client.init(timeout=300)
+			gemini_client = GeminiClient(SECURE_1PSID, SECURE_1PSIDTS, proxy=None)
+			await gemini_client.init(timeout=30, auto_close=False, close_delay=300, auto_refresh=True)
 			logger.info("Gemini client initialized successfully")
 
 		# 转换消息为对话格式
@@ -406,8 +410,13 @@ async def create_chat_completion(request: ChatCompletionRequest, api_key: str = 
 			if new_cookies:
 				SECURE_1PSID, SECURE_1PSIDTS = new_cookies
 				# 重新创建客户端
-				gemini_client = GeminiClient(SECURE_1PSID, SECURE_1PSIDTS)
-				await gemini_client.init(timeout=300)
+				logger.info(f"new cookie {SECURE_1PSID} - {SECURE_1PSIDTS}")
+				await gemini_client.close()
+				# gemini_client = GeminiClient(SECURE_1PSID, SECURE_1PSIDTS)
+				# gemini_client = GeminiClient(SECURE_1PSID, SECURE_1PSIDTS, proxy=None)
+				# await gemini_client.init(timeout=300)
+				gemini_client = GeminiClient(SECURE_1PSID, SECURE_1PSIDTS, proxy=None)
+				await gemini_client.init(timeout=30, auto_close=False, close_delay=300, auto_refresh=True)
 				logger.info("Client reinitialized with new cookies, retrying request...")
 
 				# 重试请求
@@ -518,5 +527,15 @@ async def root():
 
 if __name__ == "__main__":
 	import uvicorn
+	import sys
 
-	uvicorn.run("main:app", host="0.0.0.0", port=8000, log_level="info")
+	# 检测是否在 PyCharm 调试器中运行
+	if "pydevd" in sys.modules:
+		# 在调试模式下使用不同的启动方式
+		import asyncio
+		config = uvicorn.Config("main:app", host="0.0.0.0", port=8000, log_level="info")
+		server = uvicorn.Server(config)
+		asyncio.run(server.serve())
+	else:
+		# 正常模式
+		uvicorn.run("main:app", host="0.0.0.0", port=8000, log_level="info")
